@@ -1,0 +1,188 @@
+//! Drives the built binary. `show` talks to a throwaway fake bar.
+
+use std::io::{BufRead, BufReader, Read, Write};
+use std::net::TcpListener;
+use std::process::Command;
+use std::thread;
+
+fn fixture(path: &str) -> String {
+    format!("{}/tests/fixtures/{path}", env!("CARGO_MANIFEST_DIR"))
+}
+
+fn busybody() -> Command {
+    Command::new(env!("CARGO_BIN_EXE_busybody"))
+}
+
+#[test]
+fn convert_writes_the_reference_bytes() {
+    let dir = tempfile::tempdir().unwrap();
+    let out = dir.path().join("tracks.anim");
+    let status = busybody()
+        .args(["convert", &fixture("tracks_72x16.gif"), "-o"])
+        .arg(&out)
+        .status()
+        .unwrap();
+    assert!(status.success());
+    assert_eq!(
+        std::fs::read(&out).unwrap(),
+        std::fs::read(fixture("golden/gifrgb_72x16.anim")).unwrap()
+    );
+}
+
+#[test]
+fn convert_reports_a_missing_file() {
+    let output = busybody()
+        .args(["convert", "/nonexistent/nope.gif"])
+        .output()
+        .unwrap();
+    assert!(!output.status.success());
+    let stderr = String::from_utf8(output.stderr).unwrap();
+    assert!(
+        stderr.contains("could not read /nonexistent/nope.gif"),
+        "{stderr}"
+    );
+}
+
+#[test]
+fn convert_reports_an_undecodable_file() {
+    let dir = tempfile::tempdir().unwrap();
+    let junk = dir.path().join("junk.gif");
+    std::fs::write(&junk, b"not an image").unwrap();
+    let output = busybody().arg("convert").arg(&junk).output().unwrap();
+    assert!(!output.status.success());
+    let stderr = String::from_utf8(output.stderr).unwrap();
+    let want = format!("could not convert {}", junk.display());
+    assert!(stderr.contains(&want), "{stderr}");
+}
+
+/// (request line, lowercased header lines, body)
+type Seen = Vec<(String, Vec<String>, Vec<u8>)>;
+
+/// Accepts `count` HTTP requests, answers each with OK, and returns what it saw.
+fn fake_bar(count: usize) -> (String, thread::JoinHandle<Seen>) {
+    let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+    let url = format!("http://{}", listener.local_addr().unwrap());
+    let handle = thread::spawn(move || {
+        (0..count)
+            .map(|_| {
+                let (mut stream, _) = listener.accept().unwrap();
+                let mut reader = BufReader::new(&stream);
+                let mut request_line = String::new();
+                reader.read_line(&mut request_line).unwrap();
+                let mut content_length = 0;
+                let mut headers = Vec::new();
+                loop {
+                    let mut line = String::new();
+                    reader.read_line(&mut line).unwrap();
+                    if line.trim().is_empty() {
+                        break;
+                    }
+                    let line = line.trim().to_ascii_lowercase();
+                    if let Some(value) = line.strip_prefix("content-length:") {
+                        content_length = value.trim().parse().unwrap();
+                    }
+                    headers.push(line);
+                }
+                let mut body = vec![0; content_length];
+                reader.read_exact(&mut body).unwrap();
+                stream
+                    .write_all(
+                        b"HTTP/1.1 200 OK\r\nContent-Type: application/json\r\n\
+                          Content-Length: 15\r\nConnection: close\r\n\r\n{\"result\":\"OK\"}",
+                    )
+                    .unwrap();
+                (request_line, headers, body)
+            })
+            .collect()
+    });
+    (url, handle)
+}
+
+#[test]
+fn show_uploads_the_anim_then_draws_it() {
+    let (url, bar) = fake_bar(2);
+    let status = busybody()
+        .args(["show", &fixture("tracks_72x16.gif"), "--url", &url])
+        .args([
+            "--seconds",
+            "7",
+            "--once",
+            "--app",
+            "demo",
+            "--priority",
+            "60",
+        ])
+        .status()
+        .unwrap();
+    assert!(status.success());
+
+    let seen = bar.join().unwrap();
+    let (upload, _, anim) = &seen[0];
+    assert!(upload.starts_with("POST /api/assets/upload?"), "{upload}");
+    assert!(upload.contains("application_name=demo"), "{upload}");
+    assert!(upload.contains("file=busybody.anim"), "{upload}");
+    assert!(anim.starts_with(b"bicycle0"));
+
+    let (draw, _, body) = &seen[1];
+    assert!(draw.starts_with("POST /api/display/draw "), "{draw}");
+    let body = String::from_utf8(body.clone()).unwrap();
+    for needle in [
+        r#""application_name":"demo""#,
+        r#""priority":60"#,
+        r#""type":"animation""#,
+        r#""path":"busybody.anim""#,
+        r#""timeout":7"#,
+        r#""loop":false"#,
+        r#""display":"front""#,
+    ] {
+        assert!(body.contains(needle), "missing {needle} in {body}");
+    }
+}
+
+#[test]
+fn show_sends_the_local_api_token_header_on_every_request() {
+    let (url, bar) = fake_bar(2);
+    let status = busybody()
+        .args(["show", &fixture("tracks_72x16.gif"), "--url", &url])
+        .args(["--api-token", "hunter2"])
+        .status()
+        .unwrap();
+    assert!(status.success());
+
+    for (line, headers, _) in bar.join().unwrap() {
+        assert!(
+            headers.contains(&"x-api-token: hunter2".to_string()),
+            "{line}: {headers:?}"
+        );
+    }
+}
+
+#[test]
+fn show_draws_on_the_back_screen() {
+    let (url, bar) = fake_bar(2);
+    let status = busybody()
+        .args(["show", &fixture("tracks_72x16.gif"), "--url", &url])
+        .args(["--screen", "back"])
+        .status()
+        .unwrap();
+    assert!(status.success());
+
+    let seen = bar.join().unwrap();
+    assert_eq!(&seen[0].2[9..11], &[160, 80], "anim header width, height");
+    let body = String::from_utf8(seen[1].2.clone()).unwrap();
+    assert!(body.contains(r#""display":"back""#), "{body}");
+}
+
+#[test]
+fn show_with_zero_seconds_says_until_cleared() {
+    let (url, bar) = fake_bar(2);
+    let output = busybody()
+        .args(["show", &fixture("tracks_72x16.gif"), "--url", &url])
+        .args(["--seconds", "0"])
+        .output()
+        .unwrap();
+    assert!(output.status.success());
+    bar.join().unwrap();
+    let stdout = String::from_utf8(output.stdout).unwrap();
+    assert!(stdout.contains("until cleared"), "{stdout}");
+}

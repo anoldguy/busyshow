@@ -1,38 +1,42 @@
-[package]
-name = "busybody"
-version = "0.1.0"
-edition = "2024"
-rust-version = "1.88"
-authors = ["Nathan <andnat@gmail.com>"]
-description = "Convert GIF, WebP and APNG animations into the BUSY Bar .anim format and put them on the bar"
-license = "MIT OR Apache-2.0"
-repository = "https://github.com/anoldguy/busybody"
-readme = "README.md"
+[workspace]
+members = ["crates/busybar-anim"]
+resolver = "3"
 
-[dependencies]
+[workspace.package]
+version = "0.1.0"
+authors = ["Nathan <andnat@gmail.com>"]
+license = "Apache-2.0 OR MIT"
+edition = "2024"
+repository = "https://github.com/anoldguy/busybody"
+rust-version = "1.88"
+
+[workspace.dependencies]
+# this workspace
+busybar-anim = { path = "crates/busybar-anim", version = "0.1.0" }
+
+# external
 image = { version = "0.25", default-features = false, features = ["gif", "png", "webp"] }
 thiserror = "2"
 
-# cli only
-busylib = { version = "0.0.11", optional = true } # default-features = false + "reqwest" does not compile in 0.0.11
-bytes = { version = "1", optional = true }
-clap = { version = "4.5", features = ["derive", "env"], optional = true }
-http = { version = "1", optional = true }
-tokio = { version = "1", features = ["rt", "macros"], optional = true }
+[package]
+name = "busybody"
+description = "Convert GIF, WebP and APNG animations into the BUSY Bar .anim format and put them on the bar"
+version = { workspace = true }
+authors = { workspace = true }
+license = { workspace = true }
+edition = { workspace = true }
+repository = { workspace = true }
+rust-version = { workspace = true }
+readme = "README.md"
+
+[dependencies]
+busybar-anim.workspace = true
+busylib = "0.0.11" # default-features = false + "reqwest" does not compile in 0.0.11
+bytes = "1"
+clap = { version = "4.5", features = ["derive", "env"] }
+http = "1"
+thiserror.workspace = true
+tokio = { version = "1", features = ["rt", "macros"] }
 
 [dev-dependencies]
 tempfile = "3"
-
-[features]
-# `cli` is on by default so `cargo install busybody` just works; library users
-# who only want the converter can turn it off and drop the HTTP stack.
-default = ["cli"]
-cli = ["dep:busylib", "dep:bytes", "dep:clap", "dep:http", "dep:tokio"]
-
-[[bin]]
-name = "busybody"
-required-features = ["cli"]
-
-[[test]]
-name = "cli"
-required-features = ["cli"]

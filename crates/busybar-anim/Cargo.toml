@@ -1,0 +1,23 @@
+[package]
+name = "busybar-anim"
+description = "Encodes and decodes the BUSY Bar .anim animation container, and converts GIF, WebP and APNG into it"
+version = { workspace = true }
+authors = { workspace = true }
+license = { workspace = true }
+edition = { workspace = true }
+repository = { workspace = true }
+rust-version = { workspace = true }
+readme = "README.md"
+keywords = ["busybar", "busy-bar", "animation", "anim"]
+categories = ["encoding", "multimedia::encoding"]
+
+[features]
+default = ["decoders"]
+decoders = ["dep:image"]
+
+[dependencies]
+image = { workspace = true, optional = true }
+thiserror.workspace = true
+
+[dev-dependencies]
+image = { version = "0.25", default-features = false, features = ["gif", "png"] }

@@ -1,10 +1,9 @@
 # busybody
 
-Convert GIF, animated WebP and APNG files into the BUSY Bar's `.anim` format,
-and put them on the bar.
+Put an animated GIF, WebP or APNG on a [BUSY Bar](https://busy.app/).
 
 ```console
-cargo install busybody
+cargo install busybody --locked
 
 busybody convert bounce.gif                 # writes bounce.anim, sized for the front display
 busybody convert bounce.gif --screen back   # 160x80, 16-level grey
@@ -19,18 +18,33 @@ CLI, which handles everything else the bar can do.
 Frames are scaled to cover the target display and centre cropped. Timing comes
 from the file's own frame delays.
 
-## Library
+Prebuilt binaries for Linux, macOS and Windows are attached to each
+[GitHub release](https://github.com/anoldguy/busybody/releases).
 
-```rust
-let anim = busybody::convert(&std::fs::read("bounce.gif")?, busybody::Target::FRONT)?;
+## The library
+
+The conversion and the `.anim` container live in
+[`busybar-anim`](crates/busybar-anim/README.md), a separate crate in this
+repository. `busybody` is its reference consumer: if you want `.anim` files
+from your own program rather than from a shell, depend on the crate instead.
+
+```toml
+[dependencies]
+busybar-anim = "0.1.0" # check latest version https://crates.io/crates/busybar-anim
 ```
 
-`busybody::encode` takes frames you already have. Turn off the `cli` feature to
-skip the HTTP dependencies.
+# License
 
-## Format
+Licensed under either of
 
-The `.anim` container ("bicycle0") is described in `lib/anim_file/anim_file_format.h`
-of the [firmware](https://github.com/busy-app/busybar-firmware). The encoder here
-is byte-identical to the reference `scripts/seq2anim.py`, which the golden tests
-under `tests/fixtures/golden` pin down.
+* Apache License, Version 2.0, ([LICENSE-APACHE](LICENSE-APACHE) or http://www.apache.org/licenses/LICENSE-2.0)
+* MIT license ([LICENSE-MIT](LICENSE-MIT) or http://opensource.org/licenses/MIT)
+
+at your option.
+
+## Contribution
+
+Unless you explicitly state otherwise, any contribution intentionally
+submitted for inclusion in the work by you, as defined in the Apache-2.0
+license, shall be dual licensed as above, without any additional terms or
+conditions.

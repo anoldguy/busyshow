@@ -24,7 +24,7 @@ pub enum CliError {
     Convert {
         path: PathBuf,
         #[source]
-        source: busybody::Error,
+        source: busybar_anim::ConvertError,
     },
 
     #[error(transparent)]

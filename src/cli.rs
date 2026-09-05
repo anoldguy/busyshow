@@ -1,7 +1,7 @@
 use std::fmt;
 use std::path::{Path, PathBuf};
 
-use busybody::Target;
+use busybar_anim::Target;
 use busylib::model::assets::{AnimationElement, DisplayElement, DisplayElements, Screen};
 use busylib::types::app_name::AppName;
 use busylib::types::priority::Priority;
@@ -186,7 +186,7 @@ fn convert_file(image: &Path, screen: ScreenArg) -> Result<Vec<u8>> {
         path: image.to_path_buf(),
         source,
     })?;
-    busybody::convert(&data, screen.target()).map_err(|source| CliError::Convert {
+    busybar_anim::convert(&data, screen.target()).map_err(|source| CliError::Convert {
         path: image.to_path_buf(),
         source,
     })

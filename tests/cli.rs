@@ -5,6 +5,8 @@ use std::net::TcpListener;
 use std::process::Command;
 use std::thread;
 
+use busybar_anim::{Target, decode};
+
 fn fixture(path: &str) -> String {
     format!("{}/tests/fixtures/{path}", env!("CARGO_MANIFEST_DIR"))
 }
@@ -13,20 +15,42 @@ fn busybody() -> Command {
     Command::new(env!("CARGO_BIN_EXE_busybody"))
 }
 
-#[test]
-fn convert_writes_the_reference_bytes() {
+/// Runs `convert` on the fixture with `extra` flags and decodes what it wrote.
+fn convert_fixture(extra: &[&str]) -> busybar_anim::Animation {
     let dir = tempfile::tempdir().unwrap();
     let out = dir.path().join("tracks.anim");
     let status = busybody()
         .args(["convert", &fixture("tracks_72x16.gif"), "-o"])
         .arg(&out)
+        .args(extra)
         .status()
         .unwrap();
     assert!(status.success());
-    assert_eq!(
-        std::fs::read(&out).unwrap(),
-        std::fs::read(fixture("golden/gifrgb_72x16.anim")).unwrap()
-    );
+    decode(&std::fs::read(&out).unwrap()).unwrap()
+}
+
+#[test]
+fn convert_writes_an_anim_for_the_front_screen() {
+    let anim = convert_fixture(&[]);
+    assert_eq!(anim.target(), Target::FRONT);
+    assert!(!anim.frames().is_empty());
+}
+
+#[test]
+fn convert_sizes_the_anim_for_the_back_screen() {
+    let anim = convert_fixture(&["--screen", "back"]);
+    assert_eq!(anim.target(), Target::BACK);
+}
+
+#[test]
+fn convert_defaults_the_output_to_the_input_name_with_anim() {
+    let dir = tempfile::tempdir().unwrap();
+    let input = dir.path().join("tracks.gif");
+    std::fs::copy(fixture("tracks_72x16.gif"), &input).unwrap();
+    let status = busybody().arg("convert").arg(&input).status().unwrap();
+    assert!(status.success());
+    let written = std::fs::read(dir.path().join("tracks.anim")).unwrap();
+    assert_eq!(decode(&written).unwrap().target(), Target::FRONT);
 }
 
 #[test]
@@ -121,7 +145,7 @@ fn show_uploads_the_anim_then_draws_it() {
     assert!(upload.starts_with("POST /api/assets/upload?"), "{upload}");
     assert!(upload.contains("application_name=demo"), "{upload}");
     assert!(upload.contains("file=busybody.anim"), "{upload}");
-    assert!(anim.starts_with(b"bicycle0"));
+    assert_eq!(decode(anim).unwrap().target(), Target::FRONT);
 
     let (draw, _, body) = &seen[1];
     assert!(draw.starts_with("POST /api/display/draw "), "{draw}");
@@ -168,7 +192,7 @@ fn show_draws_on_the_back_screen() {
     assert!(status.success());
 
     let seen = bar.join().unwrap();
-    assert_eq!(&seen[0].2[9..11], &[160, 80], "anim header width, height");
+    assert_eq!(decode(&seen[0].2).unwrap().target(), Target::BACK);
     let body = String::from_utf8(seen[1].2.clone()).unwrap();
     assert!(body.contains(r#""display":"back""#), "{body}");
 }

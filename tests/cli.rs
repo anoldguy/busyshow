@@ -11,15 +11,15 @@ fn fixture(path: &str) -> String {
     format!("{}/tests/fixtures/{path}", env!("CARGO_MANIFEST_DIR"))
 }
 
-fn busybody() -> Command {
-    Command::new(env!("CARGO_BIN_EXE_busybody"))
+fn busyshow() -> Command {
+    Command::new(env!("CARGO_BIN_EXE_busyshow"))
 }
 
 /// Runs `convert` on the fixture with `extra` flags and decodes what it wrote.
 fn convert_fixture(extra: &[&str]) -> busybar_anim::Animation {
     let dir = tempfile::tempdir().unwrap();
     let out = dir.path().join("tracks.anim");
-    let status = busybody()
+    let status = busyshow()
         .args(["convert", &fixture("tracks_72x16.gif"), "-o"])
         .arg(&out)
         .args(extra)
@@ -47,7 +47,7 @@ fn convert_defaults_the_output_to_the_input_name_with_anim() {
     let dir = tempfile::tempdir().unwrap();
     let input = dir.path().join("tracks.gif");
     std::fs::copy(fixture("tracks_72x16.gif"), &input).unwrap();
-    let status = busybody().arg("convert").arg(&input).status().unwrap();
+    let status = busyshow().arg("convert").arg(&input).status().unwrap();
     assert!(status.success());
     let written = std::fs::read(dir.path().join("tracks.anim")).unwrap();
     assert_eq!(decode(&written).unwrap().target(), Target::FRONT);
@@ -55,7 +55,7 @@ fn convert_defaults_the_output_to_the_input_name_with_anim() {
 
 #[test]
 fn convert_reports_a_missing_file() {
-    let output = busybody()
+    let output = busyshow()
         .args(["convert", "/nonexistent/nope.gif"])
         .output()
         .unwrap();
@@ -72,7 +72,7 @@ fn convert_reports_an_undecodable_file() {
     let dir = tempfile::tempdir().unwrap();
     let junk = dir.path().join("junk.gif");
     std::fs::write(&junk, b"not an image").unwrap();
-    let output = busybody().arg("convert").arg(&junk).output().unwrap();
+    let output = busyshow().arg("convert").arg(&junk).output().unwrap();
     assert!(!output.status.success());
     let stderr = String::from_utf8(output.stderr).unwrap();
     let want = format!("could not convert {}", junk.display());
@@ -125,7 +125,7 @@ fn fake_bar(count: usize) -> (String, thread::JoinHandle<Seen>) {
 #[test]
 fn show_uploads_the_anim_then_draws_it() {
     let (url, bar) = fake_bar(2);
-    let status = busybody()
+    let status = busyshow()
         .args(["show", &fixture("tracks_72x16.gif"), "--url", &url])
         .args([
             "--seconds",
@@ -144,7 +144,7 @@ fn show_uploads_the_anim_then_draws_it() {
     let (upload, _, anim) = &seen[0];
     assert!(upload.starts_with("POST /api/assets/upload?"), "{upload}");
     assert!(upload.contains("application_name=demo"), "{upload}");
-    assert!(upload.contains("file=busybody.anim"), "{upload}");
+    assert!(upload.contains("file=busyshow.anim"), "{upload}");
     assert_eq!(decode(anim).unwrap().target(), Target::FRONT);
 
     let (draw, _, body) = &seen[1];
@@ -154,7 +154,7 @@ fn show_uploads_the_anim_then_draws_it() {
         r#""application_name":"demo""#,
         r#""priority":60"#,
         r#""type":"animation""#,
-        r#""path":"busybody.anim""#,
+        r#""path":"busyshow.anim""#,
         r#""timeout":7"#,
         r#""loop":false"#,
         r#""display":"front""#,
@@ -166,7 +166,7 @@ fn show_uploads_the_anim_then_draws_it() {
 #[test]
 fn show_sends_the_local_api_token_header_on_every_request() {
     let (url, bar) = fake_bar(2);
-    let status = busybody()
+    let status = busyshow()
         .args(["show", &fixture("tracks_72x16.gif"), "--url", &url])
         .args(["--api-token", "hunter2"])
         .status()
@@ -184,7 +184,7 @@ fn show_sends_the_local_api_token_header_on_every_request() {
 #[test]
 fn show_draws_on_the_back_screen() {
     let (url, bar) = fake_bar(2);
-    let status = busybody()
+    let status = busyshow()
         .args(["show", &fixture("tracks_72x16.gif"), "--url", &url])
         .args(["--screen", "back"])
         .status()
@@ -200,7 +200,7 @@ fn show_draws_on_the_back_screen() {
 #[test]
 fn show_with_zero_seconds_says_until_cleared() {
     let (url, bar) = fake_bar(2);
-    let output = busybody()
+    let output = busyshow()
         .args(["show", &fixture("tracks_72x16.gif"), "--url", &url])
         .args(["--seconds", "0"])
         .output()

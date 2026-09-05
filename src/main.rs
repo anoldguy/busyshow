@@ -1,4 +1,4 @@
-//! `busybody`: put an animated image on a BUSY Bar.
+//! `busyshow`: put an animated image on a BUSY Bar.
 
 mod cli;
 mod error;

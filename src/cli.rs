@@ -14,12 +14,12 @@ use crate::transport::LocalToken;
 
 /// Name the animation is stored under in the app's assets. One fixed name, so
 /// repeated shows overwrite instead of filling the bar's storage.
-const ASSET_NAME: &str = "busybody.anim";
-const ELEMENT_ID: &str = "busybody";
+const ASSET_NAME: &str = "busyshow.anim";
+const ELEMENT_ID: &str = "busyshow";
 
 /// Put an animated GIF, WebP, or APNG on a BUSY Bar
 #[derive(Debug, Parser)]
-#[command(name = "busybody", version)]
+#[command(name = "busyshow", version)]
 pub struct Cli {
     #[command(subcommand)]
     command: Command,
@@ -65,7 +65,7 @@ enum Command {
         priority: Priority,
 
         /// Application name the asset and element are filed under
-        #[arg(long, short, default_value = "busybody", value_name = "NAME")]
+        #[arg(long, short, default_value = "busyshow", value_name = "NAME")]
         app: AppName,
 
         #[command(flatten)]

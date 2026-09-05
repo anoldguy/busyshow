@@ -1,13 +1,13 @@
-# busybody
+# busyshow
 
 Put an animated GIF, WebP or APNG on a [BUSY Bar](https://busy.app/).
 
 ```console
-cargo install busybody --locked
+cargo install busyshow --locked
 
-busybody convert bounce.gif                 # writes bounce.anim, sized for the front display
-busybody convert bounce.gif --screen back   # 160x80, 16-level grey
-busybody show bounce.gif --seconds 10       # convert, upload, and play it
+busyshow convert bounce.gif                 # writes bounce.anim, sized for the front display
+busyshow convert bounce.gif --screen back   # 160x80, 16-level grey
+busyshow show bounce.gif --seconds 10       # convert, upload, and play it
 ```
 
 `show` talks to the bar over USB by default. Over Wi-Fi pass `--url http://<ip>`
@@ -19,13 +19,13 @@ Frames are scaled to cover the target display and centre cropped. Timing comes
 from the file's own frame delays.
 
 Prebuilt binaries for Linux, macOS and Windows are attached to each
-[GitHub release](https://github.com/anoldguy/busybody/releases).
+[GitHub release](https://github.com/anoldguy/busyshow/releases).
 
 ## The library
 
 The conversion and the `.anim` container live in
 [`busybar-anim`](crates/busybar-anim/README.md), a separate crate in this
-repository. `busybody` is its reference consumer: if you want `.anim` files
+repository. `busyshow` is its reference consumer: if you want `.anim` files
 from your own program rather than from a shell, depend on the crate instead.
 
 ```toml

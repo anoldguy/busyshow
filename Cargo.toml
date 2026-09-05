@@ -7,7 +7,7 @@ version = "0.1.0"
 authors = ["Nathan <andnat@gmail.com>"]
 license = "Apache-2.0 OR MIT"
 edition = "2024"
-repository = "https://github.com/anoldguy/busybody"
+repository = "https://github.com/anoldguy/busyshow"
 rust-version = "1.88"
 
 [workspace.dependencies]
@@ -19,7 +19,7 @@ image = { version = "0.25", default-features = false, features = ["gif", "png", 
 thiserror = "2"
 
 [package]
-name = "busybody"
+name = "busyshow"
 description = "Convert GIF, WebP and APNG animations into the BUSY Bar .anim format and put them on the bar"
 version = { workspace = true }
 authors = { workspace = true }

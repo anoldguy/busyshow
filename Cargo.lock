@@ -118,20 +118,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "busybody"
-version = "0.1.0"
-dependencies = [
- "busybar-anim",
- "busylib",
- "bytes",
- "clap",
- "http",
- "tempfile",
- "thiserror",
- "tokio",
-]
-
-[[package]]
 name = "busylib"
 version = "0.0.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -160,6 +146,20 @@ dependencies = [
  "base64 0.23.1",
  "prost",
  "serde",
+]
+
+[[package]]
+name = "busyshow"
+version = "0.1.0"
+dependencies = [
+ "busybar-anim",
+ "busylib",
+ "bytes",
+ "clap",
+ "http",
+ "tempfile",
+ "thiserror",
+ "tokio",
 ]
 
 [[package]]

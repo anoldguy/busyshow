@@ -6,7 +6,7 @@ For the Rust docs, see [docs.rs](https://docs.rs/busybar-anim). Add to your crat
 
 ```toml
 [dependencies]
-busybar-anim = "0.1.0" # check latest version https://crates.io/crates/busybar-anim
+busybar-anim = "0.2.0" # check latest version https://crates.io/crates/busybar-anim
 ```
 
 # License

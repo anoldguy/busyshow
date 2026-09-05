@@ -30,7 +30,7 @@ from your own program rather than from a shell, depend on the crate instead.
 
 ```toml
 [dependencies]
-busybar-anim = "0.1.0" # check latest version https://crates.io/crates/busybar-anim
+busybar-anim = "0.2.0" # check latest version https://crates.io/crates/busybar-anim
 ```
 
 # License

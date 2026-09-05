@@ -8,7 +8,7 @@ authors = ["Nathan <andnat@gmail.com>"]
 license = "Apache-2.0 OR MIT"
 edition = "2024"
 repository = "https://github.com/anoldguy/busyshow"
-rust-version = "1.88"
+rust-version = "1.88" # Update in .github/workflows/ci.yml, too
 
 [workspace.dependencies]
 # this workspace

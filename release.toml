@@ -1,0 +1,8 @@
+shared-version = true
+consolidate-commits = true
+tag-prefix = ""
+pre-release-commit-message = "Release {{version}}"
+pre-release-hook = ["just", "changelog"]
+pre-release-replacements = [
+  { file = "README.md", search = "busybar-anim = \"[0-9.]+\"", replace = "busybar-anim = \"{{version}}\"", exactly = 1 },
+]

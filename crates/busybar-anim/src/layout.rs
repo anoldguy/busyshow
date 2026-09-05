@@ -81,6 +81,30 @@ impl PixelLayout {
                 .collect(),
         }
     }
+
+    /// Pack 8-bit RGB pixels into this layout
+    ///
+    /// Pixels run row by row from the top left. `Gray4` keeps the top four bits of the
+    /// red channel, so convert to gray first.
+    ///
+    /// # Panics
+    ///
+    /// If `rgb` is not a whole number of three-byte pixels.
+    pub fn pack_rgb(self, rgb: &[u8]) -> Vec<u8> {
+        assert!(
+            rgb.len().is_multiple_of(3),
+            "rgb input must be whole pixels of three bytes"
+        );
+
+        let rgba: Vec<u8> = rgb
+            .as_chunks::<3>()
+            .0
+            .iter()
+            .flat_map(|p| [p[0], p[1], p[2], 255])
+            .collect();
+
+        self.pack_rgba(&rgba)
+    }
 }
 
 impl fmt::Display for PixelLayout {
@@ -247,5 +271,38 @@ mod tests {
     #[should_panic(expected = "whole pixels")]
     fn pack_rgba_wants_whole_pixels() {
         PixelLayout::Bgr888.pack_rgba(&[1, 2, 3]);
+    }
+
+    #[test]
+    fn pack_rgb_bgr888_stores_blue_first() {
+        let rgb = [0x11, 0x22, 0x33, 0xAA, 0xBB, 0xCC];
+
+        assert_eq!(
+            PixelLayout::Bgr888.pack_rgb(&rgb),
+            [0x33, 0x22, 0x11, 0xCC, 0xBB, 0xAA]
+        );
+    }
+
+    #[test]
+    fn pack_rgb_bgra8888_fills_alpha_with_255() {
+        let rgb = [0x11, 0x22, 0x33, 0xAA, 0xBB, 0xCC];
+
+        assert_eq!(
+            PixelLayout::Bgra8888.pack_rgb(&rgb),
+            [0x33, 0x22, 0x11, 0xFF, 0xCC, 0xBB, 0xAA, 0xFF]
+        );
+    }
+
+    #[test]
+    fn pack_rgb_gray4_packs_the_red_channel_two_per_byte_first_pixel_high() {
+        let rgb = [0xAB, 0, 0, 0xCD, 0, 0, 0xEF, 0, 0];
+
+        assert_eq!(PixelLayout::Gray4.pack_rgb(&rgb), [0xAC, 0xE0]);
+    }
+
+    #[test]
+    #[should_panic(expected = "whole pixels")]
+    fn pack_rgb_wants_whole_pixels() {
+        PixelLayout::Bgr888.pack_rgb(&[1, 2, 3, 4]);
     }
 }

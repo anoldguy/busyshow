@@ -34,6 +34,11 @@ impl Frame {
         }
     }
 
+    /// This frame held for `repeats` display frames instead, but zero drops the frame
+    pub fn with_repeats(self, repeats: u32) -> Self {
+        Self { repeats, ..self }
+    }
+
     /// Pixels packed in the target's layout
     pub fn pixels(&self) -> &[u8] {
         &self.pixels
@@ -58,6 +63,19 @@ pub enum EncodeError {
         /// Index of the frame
         index: usize,
         /// Bytes the target needs
+        expected: usize,
+        /// Bytes given
+        actual: usize,
+    },
+
+    /// RGB pixels do not fill the target
+    #[error("{width}x{height} needs {expected} bytes of RGB, but {actual} were given")]
+    RgbLength {
+        /// Width of the target
+        width: u8,
+        /// Height of the target
+        height: u8,
+        /// Bytes the target's pixels need
         expected: usize,
         /// Bytes given
         actual: usize,
@@ -93,6 +111,29 @@ pub enum EncodeError {
         /// Display frames given
         count: u64,
     },
+}
+
+// Target methods that produce encoding types live here so that layout.rs, which
+// anim.rs and decode.rs both build on, never depends back on anim.rs
+impl Target {
+    /// Pack `rgb` in this display's layout as a frame held for one display frame,
+    /// or `Err` when it is not exactly `pixels()` three-byte pixels
+    ///
+    /// Pixels run row by row from the top left, `width()` pixels per row.
+    pub fn frame_from_rgb(self, rgb: &[u8]) -> Result<Frame, EncodeError> {
+        let expected = self.pixels() * 3;
+
+        if rgb.len() != expected {
+            return Err(EncodeError::RgbLength {
+                width: self.width(),
+                height: self.height(),
+                expected,
+                actual: rgb.len(),
+            });
+        }
+
+        Ok(Frame::new(self.layout().pack_rgb(rgb)))
+    }
 }
 
 /// Encode `frames` already packed in `target`'s pixel layout into the bytes of a `.anim`
@@ -237,6 +278,92 @@ mod tests {
             encode(target(1, 1, PixelLayout::Bgr888), 1, &[frame]),
             Err(EncodeError::NoFrames)
         ));
+    }
+
+    #[test]
+    fn frame_from_rgb_rejects_too_few_bytes() {
+        let rgb = vec![0; Target::FRONT.pixels() * 3 - 3];
+        let error = Target::FRONT.frame_from_rgb(&rgb).unwrap_err();
+
+        assert!(matches!(
+            error,
+            EncodeError::RgbLength {
+                width: 72,
+                height: 16,
+                expected: 3456,
+                actual: 3453
+            }
+        ));
+        assert_eq!(
+            error.to_string(),
+            "72x16 needs 3456 bytes of RGB, but 3453 were given"
+        );
+    }
+
+    #[test]
+    fn frame_from_rgb_rejects_too_many_bytes() {
+        let rgb = vec![0; Target::FRONT.pixels() * 3 + 3];
+
+        assert!(matches!(
+            Target::FRONT.frame_from_rgb(&rgb),
+            Err(EncodeError::RgbLength {
+                expected: 3456,
+                actual: 3459,
+                ..
+            })
+        ));
+    }
+
+    #[test]
+    fn frame_from_rgb_rejects_a_ragged_length() {
+        let rgb = vec![0; Target::FRONT.pixels() * 3 + 1];
+
+        assert!(matches!(
+            Target::FRONT.frame_from_rgb(&rgb),
+            Err(EncodeError::RgbLength {
+                expected: 3456,
+                actual: 3457,
+                ..
+            })
+        ));
+    }
+
+    #[test]
+    fn frame_from_rgb_packs_one_display_frame() {
+        let t = target(2, 1, PixelLayout::Bgr888);
+        let rgb = [0x11, 0x22, 0x33, 0xAA, 0xBB, 0xCC];
+        let frame = t.frame_from_rgb(&rgb).unwrap();
+
+        assert_eq!(frame.pixels(), PixelLayout::Bgr888.pack_rgb(&rgb));
+        assert_eq!(frame.repeats(), 1);
+    }
+
+    #[test]
+    fn frame_from_rgb_needs_three_bytes_per_pixel_whatever_the_layout() {
+        let t = target(4, 2, PixelLayout::Gray4);
+        let rgb = [
+            0xA0, 0, 0, 0xB0, 0, 0, 0xC0, 0, 0, 0xD0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        ];
+        let frame = t.frame_from_rgb(&rgb).unwrap();
+
+        assert_eq!(frame.pixels(), [0xAB, 0xCD, 0x00, 0x00]);
+        assert!(matches!(
+            t.frame_from_rgb(&rgb[..t.frame_len()]),
+            Err(EncodeError::RgbLength {
+                width: 4,
+                height: 2,
+                expected: 24,
+                actual: 4
+            })
+        ));
+    }
+
+    #[test]
+    fn with_repeats_keeps_the_pixels_and_replaces_the_hold() {
+        let frame = Frame::new([1, 2, 3]).with_repeats(30);
+
+        assert_eq!(frame, Frame::repeated([1, 2, 3], 30));
+        assert_eq!(frame.with_repeats(0).repeats(), 0);
     }
 
     #[test]
